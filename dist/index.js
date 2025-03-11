@@ -63,6 +63,9 @@ function extractFormData(body) {
             case "Quadrant":
                 data.quadrant = value.toLowerCase();
                 break;
+            case "Department":
+                data.department = value;
+                break;
             case "Tags":
                 data.tags = value;
                 break;
@@ -81,7 +84,7 @@ async function run() {
     try {
         const token = (0, core_1.getInput)('gh-token');
         const targetLabel = (0, core_1.getInput)('label') || 'tech-radar';
-        const targetDirectory = (0, core_1.getInput)('target-directory') || 'radar';
+        const baseDirectory = (0, core_1.getInput)('target-directory') || 'radar';
         // Exit if not an issue closure event
         if (github_1.context.eventName !== 'issues' || github_1.context.payload.action !== 'closed') {
             console.log('This action only runs on issue closed events');
@@ -98,34 +101,56 @@ async function run() {
         // Get the issue content and extract form data
         const issueContent = issue.body || '';
         const formData = extractFormData(issueContent);
+        // Validate required fields
+        if (!formData.title) {
+            (0, core_1.setFailed)("Missing required field: Technology Name");
+            return;
+        }
+        if (!formData.ring) {
+            (0, core_1.setFailed)("Missing required field: Ring");
+            return;
+        }
+        if (!formData.quadrant) {
+            (0, core_1.setFailed)("Missing required field: Quadrant");
+            return;
+        }
+        if (!formData.department) {
+            (0, core_1.setFailed)("Missing required field: Department");
+            return;
+        }
         // Parse tags into array format for the frontmatter
         let tagsFormatted = '[]';
         if (formData.tags) {
             const tagArray = formData.tags.split(',').map(tag => tag.trim());
-            tagsFormatted = `[${tagArray.join(',')}]`;
+            tagsFormatted = `[${tagArray.map(tag => `"${tag}"`).join(', ')}]`;
         }
+        // Generate date-based directory structure (YYYY-MM-DD)
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        const targetDirectory = path.join(baseDirectory, dateStr);
         // Use issue title as fallback if no title in form
         const title = formData.title || issue.title;
-        // Create a filename based on title and issue number
+        // Create a filename based ONLY on the technology name (not issue number)
         const safeTitle = title
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '-')
             .replace(/-+/g, '-')
             .replace(/^-|-$/g, '');
-        const filename = `${safeTitle}-${issue.number}.md`;
+        const filename = `${safeTitle}.md`;
         const filepath = path.join(targetDirectory, filename);
-        // Format the content with frontmatter metadata
-        const formattedContent = `---
-title: ${title}
+        // Format the new department entry
+        const departmentEntry = `### ${formData.department} Assessment
 ring: ${formData.ring || 'assess'}
-quadrant: ${formData.quadrant || 'platforms-and-operations'}
+champion: [@${issue.user.login}](${issue.user.html_url})
 tags: ${tagsFormatted}
-champion: ${issue.user.login}
----
+date: ${dateStr}
 
-> From issue [#${issue.number}](${issue.html_url}) by [@${issue.user.login}](${issue.user.html_url})
+> From issue [#${issue.number}](${issue.html_url})
 
 ${formData.content || issueContent}
+
+---
+
 `;
         // Get the default branch
         const { data: repoData } = await octokit.rest.repos.get({
@@ -133,6 +158,33 @@ ${formData.content || issueContent}
             repo: github_1.context.repo.repo
         });
         const defaultBranch = repoData.default_branch;
+        // First, check if the directory exists
+        let dirExists = true;
+        try {
+            await octokit.rest.repos.getContent({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: targetDirectory,
+                ref: defaultBranch
+            });
+        }
+        catch (error) {
+            // Directory doesn't exist
+            dirExists = false;
+        }
+        // Create the directory if it doesn't exist
+        if (!dirExists) {
+            console.log(`Creating directory: ${targetDirectory}`);
+            // We need to create a file to create a directory in GitHub
+            await octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: path.join(targetDirectory, '.gitkeep'),
+                message: `Create ${dateStr} directory for tech radar entries`,
+                content: Buffer.from('').toString('base64'),
+                branch: defaultBranch
+            });
+        }
         try {
             // Check if file already exists
             const { data: fileData } = await octokit.rest.repos.getContent({
@@ -141,19 +193,69 @@ ${formData.content || issueContent}
                 path: filepath,
                 ref: defaultBranch
             });
-            // Update existing file
+            // File exists, get its content and add the new department entry
+            const currentContent = Buffer.from(fileData.content, 'base64').toString('utf-8');
+            // Check if the file has frontmatter
+            let newContent;
+            if (currentContent.startsWith('---')) {
+                // File has frontmatter - preserve it and add the new department entry
+                const frontmatterEnd = currentContent.indexOf('---', 3) + 3;
+                const frontmatter = currentContent.substring(0, frontmatterEnd);
+                const existingContent = currentContent.substring(frontmatterEnd);
+                // Check if this department already has an entry
+                const departmentHeaderIndex = existingContent.indexOf(`### ${formData.department} Assessment`);
+                if (departmentHeaderIndex !== -1) {
+                    // Department entry exists, replace it
+                    const nextDepartmentIndex = existingContent.indexOf('### ', departmentHeaderIndex + 1);
+                    if (nextDepartmentIndex !== -1) {
+                        // There's another department after this one
+                        newContent = frontmatter +
+                            existingContent.substring(0, departmentHeaderIndex) +
+                            departmentEntry +
+                            existingContent.substring(nextDepartmentIndex);
+                    }
+                    else {
+                        // This is the last department
+                        newContent = frontmatter +
+                            existingContent.substring(0, departmentHeaderIndex) +
+                            departmentEntry;
+                    }
+                }
+                else {
+                    // Department doesn't exist yet, add it
+                    newContent = frontmatter + existingContent + departmentEntry;
+                }
+            }
+            else {
+                // File doesn't have frontmatter - add new frontmatter + existing content + new department entry
+                const frontmatter = `---
+title: ${title}
+quadrant: ${formData.quadrant}
+---
+
+`;
+                newContent = frontmatter + currentContent + departmentEntry;
+            }
+            // Update the file
             await octokit.rest.repos.createOrUpdateFileContents({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
                 path: filepath,
-                message: `Update tech radar entry from issue #${issue.number}`,
-                content: Buffer.from(formattedContent).toString('base64'),
+                message: `Update tech radar entry for ${formData.department} from issue #${issue.number}`,
+                content: Buffer.from(newContent).toString('base64'),
                 branch: defaultBranch,
                 sha: fileData.sha
             });
+            console.log(`Successfully added department entry to tech radar entry at ${filepath}`);
         }
         catch (e) {
             // File doesn't exist, create it
+            const formattedContent = `---
+title: ${title}
+quadrant: ${formData.quadrant}
+---
+
+${departmentEntry}`;
             await octokit.rest.repos.createOrUpdateFileContents({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
@@ -162,8 +264,8 @@ ${formData.content || issueContent}
                 content: Buffer.from(formattedContent).toString('base64'),
                 branch: defaultBranch
             });
+            console.log(`Successfully created new tech radar entry at ${filepath}`);
         }
-        console.log(`Successfully created tech radar entry at ${filepath}`);
     }
     catch (error) {
         console.error(error);
