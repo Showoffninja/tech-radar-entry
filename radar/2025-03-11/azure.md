@@ -26,3 +26,24 @@ _No response_
 
 ---
 
+---
+ring: adopt (use this technology)
+champion: [@Showoffninja](https://github.com/Showoffninja)
+department: General
+tags: ["_No response_"]
+date: 2025-03-11
+---
+
+> From issue [#8](https://github.com/Showoffninja/tech-radar-entry/issues/8)
+
+## Description
+asd
+
+## Context
+asd
+
+## Resources
+asd
+
+---
+
