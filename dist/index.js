@@ -6,6 +6,39 @@
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -18,23 +51,58 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core_1 = __nccwpck_require__(7484);
 const github_1 = __nccwpck_require__(3228);
+const path = __importStar(__nccwpck_require__(6928));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
-        const token = (0, core_1.getInput)('gh-token');
-        const label = (0, core_1.getInput)('label');
-        const octokit = (0, github_1.getOctokit)(token);
-        const pullRequest = github_1.context.payload.pull_request;
         try {
-            if (!pullRequest) {
-                throw new Error('This action can only be run on Pull Requests');
+            const token = (0, core_1.getInput)('gh-token');
+            const targetLabel = (0, core_1.getInput)('label') || 'tech-radar';
+            const targetDirectory = (0, core_1.getInput)('target-directory') || 'radar';
+            // Exit if not an issue closure event
+            if (github_1.context.eventName !== 'issues' || github_1.context.payload.action !== 'closed') {
+                console.log('This action only runs on issue closed events');
+                return;
             }
-            yield octokit.rest.issues.addLabels({
+            const issue = github_1.context.payload.issue;
+            // Check if the issue has the tech-radar label
+            if (!issue || !issue.labels.some((label) => label.name === targetLabel)) {
+                console.log(`Issue does not have the required "${targetLabel}" label`);
+                return;
+            }
+            console.log(`Processing tech radar entry from issue #${issue.number}: ${issue.title}`);
+            const octokit = (0, github_1.getOctokit)(token);
+            // Get the issue content
+            const issueContent = issue.body || '';
+            // Create a filename based on issue title and number
+            const safeTitle = issue.title
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            const filename = `${safeTitle}-${issue.number}.md`;
+            const filepath = path.join(targetDirectory, filename);
+            // Format the content with some metadata
+            const formattedContent = `# ${issue.title}\n\n` +
+                `> From issue [#${issue.number}](${issue.html_url}) by [@${issue.user.login}](${issue.user.html_url})\n\n` +
+                `${issueContent}\n`;
+            // Get the current commit SHA to use as the base
+            const { data: refData } = yield octokit.rest.git.getRef({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
-                issue_number: pullRequest.number,
-                labels: [label],
+                ref: `heads/${github_1.context.ref.replace('refs/heads/', '')}`
             });
+            // Create or update the file
+            yield octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: filepath,
+                message: `Add tech radar entry from issue #${issue.number}`,
+                content: Buffer.from(formattedContent).toString('base64'),
+                branch: github_1.context.ref.replace('refs/heads/', ''),
+                sha: refData.object.sha
+            });
+            console.log(`Successfully created tech radar entry at ${filepath}`);
         }
         catch (error) {
             (0, core_1.setFailed)((_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : 'Unknown error');
