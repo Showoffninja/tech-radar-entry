@@ -120,10 +120,14 @@ async function run() {
     
     // Format the new department entry
     const departmentEntry = `### ${formData.department} Assessment
+
+\`\`\`yaml
 ring: ${formData.ring || 'assess'}
-champion: [@${issue.user.login}](${issue.user.html_url})
+champion: ${issue.user.login}
+department: ${formData.department}
 tags: ${tagsFormatted}
 date: ${dateStr}
+\`\`\`
 
 > From issue [#${issue.number}](${issue.html_url})
 
