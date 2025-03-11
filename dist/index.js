@@ -139,15 +139,13 @@ async function run() {
         const filename = `${safeTitle}.md`;
         const filepath = path.join(targetDirectory, filename);
         // Format the new department entry
-        const departmentEntry = `### ${formData.department} Assessment
-
-\`\`\`yaml
+        const departmentEntry = `---
 ring: ${formData.ring || 'assess'}
 champion: [@${issue.user.login}](${issue.user.html_url})
 department: ${formData.department}
 tags: ${tagsFormatted}
 date: ${dateStr}
-\`\`\`
+---
 
 > From issue [#${issue.number}](${issue.html_url})
 
