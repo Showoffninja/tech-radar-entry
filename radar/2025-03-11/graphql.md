@@ -32,3 +32,26 @@ GraphQL on GitHub – https://github.com/graphql (Official GraphQL repository, t
 
 ---
 
+### Design Assessment
+
+```yaml
+ring: trial (try this technology in a project that can accept risk)
+champion: Showoffninja
+department: Design
+tags: ["cloud"]
+date: 2025-03-11
+```
+
+> From issue [#4](https://github.com/Showoffninja/tech-radar-entry/issues/4)
+
+## Description
+something lala alalalalalal
+
+## Context
+slksflkasfl jalskfdj alskfj aldfjlaks f
+
+## Resources
+_No response_
+
+---
+
