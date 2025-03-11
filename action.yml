@@ -1,18 +1,21 @@
-name: "Tech Radar Entry"
-description: "A GitHub Action to manage tech radar entries"
+name: 'Tech Radar Entry'
+description: 'Creates markdown files from closed issues labeled as tech-radar'
 inputs:
-  entry:
-    description: "The tech radar entry to manage"
+  gh-token:
+    description: 'GitHub token'
     required: true
-    default: ""
-  secret:
-    description: "The secret to use for authentication"
-    required: true
-    default: "somekindofSecret"
+  label:
+    description: 'Label to look for on issues'
+    required: false
+    default: 'tech-radar'
+  target-directory:
+    description: 'Directory where to save the markdown files'
+    required: false
+    default: 'radar'
 
 runs:
-  using: "node16"
-  main: "dist/index.js"
+  using: 'node16'
+  main: 'dist/index.js'
 
 branding:
   icon: "zap"

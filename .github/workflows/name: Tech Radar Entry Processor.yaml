@@ -1,0 +1,22 @@
+name: Tech Radar Entry Processor
+
+on:
+  issues:
+    types: [closed]
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  process-radar-entry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Process tech radar entry
+        uses: ./
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
+          label: tech-radar
+          target-directory: radar
