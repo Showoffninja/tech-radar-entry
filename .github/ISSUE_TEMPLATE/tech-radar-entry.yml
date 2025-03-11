@@ -21,6 +21,22 @@ body:
       required: true
 
   - type: dropdown
+    id: department
+    attributes:
+      label: Department
+      description: Which department is this assessment for?
+      options:
+        - Engineering
+        - Data Science
+        - DevOps
+        - QA
+        - Product
+        - Design
+        - General
+    validations:
+      required: true
+
+  - type: dropdown
     id: ring
     attributes:
       label: Ring
