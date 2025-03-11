@@ -102,19 +102,19 @@ async function run() {
         const issueContent = issue.body || '';
         const formData = extractFormData(issueContent);
         // Validate required fields
-        if (!formData.title) {
+        if (!formData.title || formData.title.toLowerCase() === "no response") {
             (0, core_1.setFailed)("Missing required field: Technology Name");
             return;
         }
-        if (!formData.ring) {
+        if (!formData.ring || formData.ring.toLowerCase() === "no response") {
             (0, core_1.setFailed)("Missing required field: Ring");
             return;
         }
-        if (!formData.quadrant) {
+        if (!formData.quadrant || formData.quadrant.toLowerCase() === "no response") {
             (0, core_1.setFailed)("Missing required field: Quadrant");
             return;
         }
-        if (!formData.department) {
+        if (!formData.department || formData.department.toLowerCase() === "no response") {
             (0, core_1.setFailed)("Missing required field: Department");
             return;
         }
