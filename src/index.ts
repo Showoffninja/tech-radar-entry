@@ -45,27 +45,50 @@ async function run() {
       `> From issue [#${issue.number}](${issue.html_url}) by [@${issue.user.login}](${issue.user.html_url})\n\n` +
       `${issueContent}\n`;
     
-    // Get the current commit SHA to use as the base
-    const { data: refData } = await octokit.rest.git.getRef({
+    // Get the default branch
+    const { data: repoData } = await octokit.rest.repos.get({
       owner: context.repo.owner,
-      repo: context.repo.repo,
-      ref: `heads/${context.ref.replace('refs/heads/', '')}`
+      repo: context.repo.repo
     });
     
-    // Create or update the file
-    await octokit.rest.repos.createOrUpdateFileContents({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      path: filepath,
-      message: `Add tech radar entry from issue #${issue.number}`,
-      content: Buffer.from(formattedContent).toString('base64'),
-      branch: context.ref.replace('refs/heads/', ''),
-      sha: refData.object.sha
-    });
+    const defaultBranch = repoData.default_branch;
+    
+    try {
+      // Check if file already exists
+      const { data: fileData } = await octokit.rest.repos.getContent({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        path: filepath,
+        ref: defaultBranch
+      });
+      
+      // Update existing file
+      await octokit.rest.repos.createOrUpdateFileContents({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        path: filepath,
+        message: `Update tech radar entry from issue #${issue.number}`,
+        content: Buffer.from(formattedContent).toString('base64'),
+        branch: defaultBranch,
+        sha: (fileData as any).sha
+      });
+      
+    } catch (e) {
+      // File doesn't exist, create it
+      await octokit.rest.repos.createOrUpdateFileContents({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        path: filepath,
+        message: `Add tech radar entry from issue #${issue.number}`,
+        content: Buffer.from(formattedContent).toString('base64'),
+        branch: defaultBranch
+      });
+    }
     
     console.log(`Successfully created tech radar entry at ${filepath}`);
     
   } catch (error) {
+    console.error(error);
     setFailed((error as Error)?.message ?? 'Unknown error');
   }
 }

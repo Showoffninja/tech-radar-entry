@@ -86,25 +86,46 @@ function run() {
             const formattedContent = `# ${issue.title}\n\n` +
                 `> From issue [#${issue.number}](${issue.html_url}) by [@${issue.user.login}](${issue.user.html_url})\n\n` +
                 `${issueContent}\n`;
-            // Get the current commit SHA to use as the base
-            const { data: refData } = yield octokit.rest.git.getRef({
+            // Get the default branch
+            const { data: repoData } = yield octokit.rest.repos.get({
                 owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                ref: `heads/${github_1.context.ref.replace('refs/heads/', '')}`
+                repo: github_1.context.repo.repo
             });
-            // Create or update the file
-            yield octokit.rest.repos.createOrUpdateFileContents({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                path: filepath,
-                message: `Add tech radar entry from issue #${issue.number}`,
-                content: Buffer.from(formattedContent).toString('base64'),
-                branch: github_1.context.ref.replace('refs/heads/', ''),
-                sha: refData.object.sha
-            });
+            const defaultBranch = repoData.default_branch;
+            try {
+                // Check if file already exists
+                const { data: fileData } = yield octokit.rest.repos.getContent({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    path: filepath,
+                    ref: defaultBranch
+                });
+                // Update existing file
+                yield octokit.rest.repos.createOrUpdateFileContents({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    path: filepath,
+                    message: `Update tech radar entry from issue #${issue.number}`,
+                    content: Buffer.from(formattedContent).toString('base64'),
+                    branch: defaultBranch,
+                    sha: fileData.sha
+                });
+            }
+            catch (e) {
+                // File doesn't exist, create it
+                yield octokit.rest.repos.createOrUpdateFileContents({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    path: filepath,
+                    message: `Add tech radar entry from issue #${issue.number}`,
+                    content: Buffer.from(formattedContent).toString('base64'),
+                    branch: defaultBranch
+                });
+            }
             console.log(`Successfully created tech radar entry at ${filepath}`);
         }
         catch (error) {
+            console.error(error);
             (0, core_1.setFailed)((_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : 'Unknown error');
         }
     });

@@ -3,6 +3,9 @@ name: Tech Radar Entry Processor
 on:
   issues:
     types: [closed]
+permissions:
+  contents: write
+  issues: read
 
 jobs:
   process-radar-entry:
