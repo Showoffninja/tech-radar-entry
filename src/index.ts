@@ -94,10 +94,15 @@ async function run() {
     }
     
     // Parse tags into array format for the frontmatter
-    let tagsFormatted = '[]';
-    if (formData.tags) {
-      const tagArray = formData.tags.split(',').map(tag => tag.trim());
-      tagsFormatted = `[${tagArray.map(tag => `"${tag}"`).join(', ')}]`;
+    let tagsFormatted = '';
+    if (formData.tags && formData.tags.trim() !== '') {
+      const tagArray = formData.tags.split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0); // Filter out empty tags
+      
+      if (tagArray.length > 0) {
+        tagsFormatted = `[${tagArray.map(tag => `"${tag}"`).join(', ')}]`;
+      }
     }
     
     // Generate date-based directory structure (YYYY-MM-DD)
@@ -115,6 +120,11 @@ async function run() {
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
     
+    if (safeTitle.length === 0) {
+      setFailed("Invalid technology name: cannot generate a valid filename");
+      return;
+    }
+    
     const filename = `${safeTitle}.md`;
     const filepath = path.join(targetDirectory, filename);
     
@@ -123,7 +133,7 @@ async function run() {
 title: ${title}
 quadrant: ${formData.quadrant}
 ring: ${formData.ring || 'assess'}
-tags: ${tagsFormatted}
+${tagsFormatted ? `tags: ${tagsFormatted}` : ''}
 champion: [@${issue.user.login}](${issue.user.html_url})
 department: ${formData.department}
 date: ${dateStr}
