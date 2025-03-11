@@ -1,0 +1,86 @@
+name: Technology Radar Entry
+description: Submit a new technology for consideration in the Tech Radar
+title: "[Tech Radar]: "
+labels: ["tech-radar"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Technology Radar Entry
+        Thank you for suggesting a technology for our radar. Please fill out the information below.
+
+  - type: input
+    id: title
+    attributes:
+      label: Technology Name
+      description: The name of the technology, tool, framework, or technique
+      placeholder: e.g., Kubernetes, GraphQL, Tailwind CSS
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ring
+    attributes:
+      label: Ring
+      description: The level of adoption you recommend for this technology
+      options:
+        - adopt (Use this technology)
+        - trial (Try this technology in a project that can accept risk)
+        - assess (Explore and learn more about it)
+        - hold (Proceed with caution or avoid for now)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: quadrant
+    attributes:
+      label: Quadrant
+      description: Which category does this technology best fit into?
+      options:
+        - techniques (Methods, processes, and ways of working)
+        - tools (Software and technologies that support development)
+        - platforms-and-operations (Infrastructure, operational technologies)
+        - languages-and-frameworks (Programming languages and frameworks)
+    validations:
+      required: true
+
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Comma-separated list of relevant tags
+      placeholder: e.g., cloud,aws,devops,testing
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide details about the technology and why it should be considered
+      placeholder: Describe what this technology is, its key benefits, potential use cases, and why it matters to our organization.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Any relevant context about where/how this technology applies
+      placeholder: Is this specific to certain teams, products, or scenarios? What problems does it address?
+    validations:
+      required: false
+
+  - type: textarea
+    id: resources
+    attributes:
+      label: Resources
+      description: Useful links, documentation, examples, or other resources
+      placeholder: |
+        - https://example.com/docs
+        - Internal POC: [link to repo]
+        - Team already using it: Team X
+    validations:
+      required: false

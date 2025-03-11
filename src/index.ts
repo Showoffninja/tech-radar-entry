@@ -3,6 +3,44 @@ import { context, getOctokit } from '@actions/github';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Helper function to extract data from issue body form
+function extractFormData(body: string): Record<string, string> {
+  const data: Record<string, string> = {};
+  
+  // Pattern to match form fields like "### Technology Name\n\nKubernetes"
+  const pattern = /### ([^\n]+)\s*\n\s*(?:<!--.+?-->\s*\n\s*)?(.*?)(?=\n\s*###|$)/gs;
+  let match;
+  
+  while ((match = pattern.exec(body)) !== null) {
+    const key = match[1].trim();
+    const value = match[2].trim();
+    
+    // Convert keys to our expected format
+    switch (key) {
+      case "Technology Name":
+        data.title = value;
+        break;
+      case "Ring":
+        data.ring = value.toLowerCase();
+        break;
+      case "Quadrant":
+        data.quadrant = value.toLowerCase();
+        break;
+      case "Tags":
+        data.tags = value;
+        break;
+      case "Description":
+      case "Context":
+      case "Resources":
+        // Combine these into content
+        data.content = data.content ? `${data.content}\n\n## ${key}\n${value}` : `## ${key}\n${value}`;
+        break;
+    }
+  }
+  
+  return data;
+}
+
 async function run() {
   try {
     const token = getInput('gh-token');
@@ -27,11 +65,22 @@ async function run() {
     
     const octokit = getOctokit(token);
     
-    // Get the issue content
+    // Get the issue content and extract form data
     const issueContent = issue.body || '';
+    const formData = extractFormData(issueContent);
     
-    // Create a filename based on issue title and number
-    const safeTitle = issue.title
+    // Parse tags into array format for the frontmatter
+    let tagsFormatted = '[]';
+    if (formData.tags) {
+      const tagArray = formData.tags.split(',').map(tag => tag.trim());
+      tagsFormatted = `[${tagArray.join(',')}]`;
+    }
+    
+    // Use issue title as fallback if no title in form
+    const title = formData.title || issue.title;
+    
+    // Create a filename based on title and issue number
+    const safeTitle = title
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
@@ -40,10 +89,19 @@ async function run() {
     const filename = `${safeTitle}-${issue.number}.md`;
     const filepath = path.join(targetDirectory, filename);
     
-    // Format the content with some metadata
-    const formattedContent = `# ${issue.title}\n\n` +
-      `> From issue [#${issue.number}](${issue.html_url}) by [@${issue.user.login}](${issue.user.html_url})\n\n` +
-      `${issueContent}\n`;
+    // Format the content with frontmatter metadata
+    const formattedContent = `---
+title: ${title}
+ring: ${formData.ring || 'assess'}
+quadrant: ${formData.quadrant || 'platforms-and-operations'}
+tags: ${tagsFormatted}
+champion: ${issue.user.login}
+---
+
+> From issue [#${issue.number}](${issue.html_url}) by [@${issue.user.login}](${issue.user.html_url})
+
+${formData.content || issueContent}
+`;
     
     // Get the default branch
     const { data: repoData } = await octokit.rest.repos.get({
