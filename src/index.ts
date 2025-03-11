@@ -123,7 +123,7 @@ async function run() {
 
 \`\`\`yaml
 ring: ${formData.ring || 'assess'}
-champion: ${issue.user.login}
+champion: [@${issue.user.login}](${issue.user.html_url})
 department: ${formData.department}
 tags: ${tagsFormatted}
 date: ${dateStr}
@@ -195,22 +195,25 @@ ${formData.content || issueContent}
         const existingContent = currentContent.substring(frontmatterEnd);
         
         // Check if this department already has an entry
-        const departmentHeaderIndex = existingContent.indexOf(`### ${formData.department} Assessment`);
+        const departmentEntryPattern = new RegExp(`---\\s*ring:.+?department:\\s*${formData.department}\\s*tags:`, 's');
+        const departmentMatch = existingContent.match(departmentEntryPattern);
         
-        if (departmentHeaderIndex !== -1) {
-          // Department entry exists, replace it
-          const nextDepartmentIndex = existingContent.indexOf('### ', departmentHeaderIndex + 1);
+        if (departmentMatch) {
+          // Department entry exists, find its boundaries and replace it
+          const departmentStartIndex = existingContent.indexOf('---', existingContent.indexOf(departmentMatch[0]));
+          let departmentEndIndex = existingContent.indexOf('---', departmentStartIndex + 3);
           
-          if (nextDepartmentIndex !== -1) {
-            // There's another department after this one
+          // If another entry follows this one
+          if (departmentEndIndex !== -1) {
+            departmentEndIndex += 3; // Include the end marker
             newContent = frontmatter + 
-              existingContent.substring(0, departmentHeaderIndex) +
+              existingContent.substring(0, departmentStartIndex) +
               departmentEntry +
-              existingContent.substring(nextDepartmentIndex);
+              existingContent.substring(departmentEndIndex);
           } else {
-            // This is the last department
+            // This is the last department entry
             newContent = frontmatter + 
-              existingContent.substring(0, departmentHeaderIndex) +
+              existingContent.substring(0, departmentStartIndex) +
               departmentEntry;
           }
         } else {
@@ -258,7 +261,7 @@ ${departmentEntry}`;
         content: Buffer.from(formattedContent).toString('base64'),
         branch: defaultBranch
       });
-      
+        
       console.log(`Successfully created new tech radar entry at ${filepath}`);
     }
     
@@ -269,5 +272,8 @@ ${departmentEntry}`;
 }
 
 run();
+
+
+
 
 
