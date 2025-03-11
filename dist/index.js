@@ -138,21 +138,20 @@ async function run() {
             .replace(/^-|-$/g, '');
         const filename = `${safeTitle}.md`;
         const filepath = path.join(targetDirectory, filename);
-        // Format the new department entry
-        const departmentEntry = `---
+        // Format the content with all metadata in frontmatter
+        const formattedContent = `---
+title: ${title}
+quadrant: ${formData.quadrant}
 ring: ${formData.ring || 'assess'}
+tags: ${tagsFormatted}
 champion: [@${issue.user.login}](${issue.user.html_url})
 department: ${formData.department}
-tags: ${tagsFormatted}
 date: ${dateStr}
 ---
 
 > From issue [#${issue.number}](${issue.html_url})
 
 ${formData.content || issueContent}
-
----
-
 `;
         // Get the default branch
         const { data: repoData } = await octokit.rest.repos.get({
@@ -195,72 +194,20 @@ ${formData.content || issueContent}
                 path: filepath,
                 ref: defaultBranch
             });
-            // File exists, get its content and add the new department entry
-            const currentContent = Buffer.from(fileData.content, 'base64').toString('utf-8');
-            // Check if the file has frontmatter
-            let newContent;
-            if (currentContent.startsWith('---')) {
-                // File has frontmatter - preserve it and add the new department entry
-                const frontmatterEnd = currentContent.indexOf('---', 3) + 3;
-                const frontmatter = currentContent.substring(0, frontmatterEnd);
-                const existingContent = currentContent.substring(frontmatterEnd);
-                // Check if this department already has an entry
-                const departmentEntryPattern = new RegExp(`---\\s*ring:.+?department:\\s*${formData.department}\\s*tags:`, 's');
-                const departmentMatch = existingContent.match(departmentEntryPattern);
-                if (departmentMatch) {
-                    // Department entry exists, find its boundaries and replace it
-                    const departmentStartIndex = existingContent.indexOf('---', existingContent.indexOf(departmentMatch[0]));
-                    let departmentEndIndex = existingContent.indexOf('---', departmentStartIndex + 3);
-                    // If another entry follows this one
-                    if (departmentEndIndex !== -1) {
-                        departmentEndIndex += 3; // Include the end marker
-                        newContent = frontmatter +
-                            existingContent.substring(0, departmentStartIndex) +
-                            departmentEntry +
-                            existingContent.substring(departmentEndIndex);
-                    }
-                    else {
-                        // This is the last department entry
-                        newContent = frontmatter +
-                            existingContent.substring(0, departmentStartIndex) +
-                            departmentEntry;
-                    }
-                }
-                else {
-                    // Department doesn't exist yet, add it
-                    newContent = frontmatter + existingContent + departmentEntry;
-                }
-            }
-            else {
-                // File doesn't have frontmatter - add new frontmatter + existing content + new department entry
-                const frontmatter = `---
-title: ${title}
-quadrant: ${formData.quadrant}
----
-
-`;
-                newContent = frontmatter + currentContent + departmentEntry;
-            }
-            // Update the file
+            // File exists - but we'll just replace it with the new content
             await octokit.rest.repos.createOrUpdateFileContents({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
                 path: filepath,
                 message: `Update tech radar entry for ${formData.department} from issue #${issue.number}`,
-                content: Buffer.from(newContent).toString('base64'),
+                content: Buffer.from(formattedContent).toString('base64'),
                 branch: defaultBranch,
                 sha: fileData.sha
             });
-            console.log(`Successfully added department entry to tech radar entry at ${filepath}`);
+            console.log(`Successfully updated tech radar entry at ${filepath}`);
         }
         catch (e) {
             // File doesn't exist, create it
-            const formattedContent = `---
-title: ${title}
-quadrant: ${formData.quadrant}
----
-
-${departmentEntry}`;
             await octokit.rest.repos.createOrUpdateFileContents({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
