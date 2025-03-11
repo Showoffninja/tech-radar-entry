@@ -1,0 +1,22 @@
+{
+  "name": "tech-radar-entry",
+  "version": "1.0.0",
+  "description": "Create Tech Radar entries by issues",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc && ncc build lib/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0",
+    "@octokit/rest": "^21.1.1",
+    "@vercel/ncc": "^0.38.3"
+  }
+}

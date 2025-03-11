@@ -1,0 +1,19 @@
+name: "Tech Radar Entry"
+description: "A GitHub Action to manage tech radar entries"
+inputs:
+  entry:
+    description: "The tech radar entry to manage"
+    required: true
+    default: ""
+  secret:
+    description: "The secret to use for authentication"
+    required: true
+    default: "somekindofSecret"
+
+runs:
+  using: "node16"
+  main: "dist/index.js"
+
+branding:
+  icon: "zap"
+  color: "blue"
