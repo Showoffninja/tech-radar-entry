@@ -39,96 +39,198 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core_1 = __nccwpck_require__(7484);
 const github_1 = __nccwpck_require__(3228);
 const path = __importStar(__nccwpck_require__(6928));
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a;
+// Helper function to extract data from issue body form
+function extractFormData(body) {
+    const data = {};
+    // Pattern to match form fields like "### Technology Name\n\nKubernetes"
+    const pattern = /### ([^\n]+)\s*\n\s*(?:<!--.+?-->\s*\n\s*)?(.*?)(?=\n\s*###|$)/gs;
+    let match;
+    while ((match = pattern.exec(body)) !== null) {
+        const key = match[1].trim();
+        const value = match[2].trim();
+        // Convert keys to our expected format
+        switch (key) {
+            case "Technology Name":
+                data.title = value;
+                break;
+            case "Ring":
+                data.ring = value.toLowerCase();
+                break;
+            case "Quadrant":
+                data.quadrant = value.toLowerCase();
+                break;
+            case "Department":
+                data.department = value;
+                break;
+            case "Tags":
+                data.tags = value;
+                break;
+            case "Description":
+            case "Context":
+            case "Resources":
+                // Combine these into content
+                data.content = data.content ? `${data.content}\n\n## ${key}\n${value}` : `## ${key}\n${value}`;
+                break;
+        }
+    }
+    return data;
+}
+async function run() {
+    var _a;
+    try {
+        const token = (0, core_1.getInput)('gh-token');
+        const targetLabel = (0, core_1.getInput)('label') || 'tech-radar';
+        const baseDirectory = (0, core_1.getInput)('target-directory') || 'radar';
+        // Exit if not an issue closure event
+        if (github_1.context.eventName !== 'issues' || github_1.context.payload.action !== 'closed') {
+            console.log('This action only runs on issue closed events');
+            return;
+        }
+        const issue = github_1.context.payload.issue;
+        // Check if the issue has the tech-radar label
+        if (!issue || !issue.labels.some((label) => label.name === targetLabel)) {
+            console.log(`Issue does not have the required "${targetLabel}" label`);
+            return;
+        }
+        console.log(`Processing tech radar entry from issue #${issue.number}: ${issue.title}`);
+        const octokit = (0, github_1.getOctokit)(token);
+        // Get the issue content and extract form data
+        const issueContent = issue.body || '';
+        const formData = extractFormData(issueContent);
+        // Validate required fields
+        if (!formData.title || formData.title.toLowerCase() === "no response") {
+            (0, core_1.setFailed)("Missing required field: Technology Name");
+            return;
+        }
+        if (!formData.ring || formData.ring.toLowerCase() === "no response") {
+            (0, core_1.setFailed)("Missing required field: Ring");
+            return;
+        }
+        if (!formData.quadrant || formData.quadrant.toLowerCase() === "no response") {
+            (0, core_1.setFailed)("Missing required field: Quadrant");
+            return;
+        }
+        if (!formData.department || formData.department.toLowerCase() === "no response") {
+            (0, core_1.setFailed)("Missing required field: Department");
+            return;
+        }
+        // Parse tags into array format for the frontmatter
+        let tagsFormatted = '';
+        if (formData.tags && formData.tags.trim() !== '') {
+            const tagArray = formData.tags.split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0); // Filter out empty tags
+            if (tagArray.length > 0) {
+                tagsFormatted = `[${tagArray.map(tag => `"${tag}"`).join(', ')}]`;
+            }
+        }
+        // Generate date-based directory structure (YYYY-MM-DD)
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        const targetDirectory = path.join(baseDirectory, dateStr);
+        // Use issue title as fallback if no title in form
+        const title = formData.title || issue.title;
+        // Create a filename based ONLY on the technology name (not issue number)
+        const safeTitle = title
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+        if (safeTitle.length === 0) {
+            (0, core_1.setFailed)("Invalid technology name: cannot generate a valid filename");
+            return;
+        }
+        const filename = `${safeTitle}.md`;
+        const filepath = path.join(targetDirectory, filename);
+        // Format the content with all metadata in frontmatter
+        const formattedContent = `---
+title: ${title}
+quadrant: ${formData.quadrant}
+ring: ${formData.ring || 'assess'}
+${tagsFormatted ? `tags: ${tagsFormatted}` : ''}
+champion: [@${issue.user.login}](${issue.user.html_url})
+department: ${formData.department}
+date: ${dateStr}
+---
+
+> From issue [#${issue.number}](${issue.html_url})
+
+${formData.content || issueContent}
+`;
+        // Get the default branch
+        const { data: repoData } = await octokit.rest.repos.get({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo
+        });
+        const defaultBranch = repoData.default_branch;
+        // First, check if the directory exists
+        let dirExists = true;
         try {
-            const token = (0, core_1.getInput)('gh-token');
-            const targetLabel = (0, core_1.getInput)('label') || 'tech-radar';
-            const targetDirectory = (0, core_1.getInput)('target-directory') || 'radar';
-            // Exit if not an issue closure event
-            if (github_1.context.eventName !== 'issues' || github_1.context.payload.action !== 'closed') {
-                console.log('This action only runs on issue closed events');
-                return;
-            }
-            const issue = github_1.context.payload.issue;
-            // Check if the issue has the tech-radar label
-            if (!issue || !issue.labels.some((label) => label.name === targetLabel)) {
-                console.log(`Issue does not have the required "${targetLabel}" label`);
-                return;
-            }
-            console.log(`Processing tech radar entry from issue #${issue.number}: ${issue.title}`);
-            const octokit = (0, github_1.getOctokit)(token);
-            // Get the issue content
-            const issueContent = issue.body || '';
-            // Create a filename based on issue title and number
-            const safeTitle = issue.title
-                .toLowerCase()
-                .replace(/[^a-z0-9]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '');
-            const filename = `${safeTitle}-${issue.number}.md`;
-            const filepath = path.join(targetDirectory, filename);
-            // Format the content with some metadata
-            const formattedContent = `# ${issue.title}\n\n` +
-                `> From issue [#${issue.number}](${issue.html_url}) by [@${issue.user.login}](${issue.user.html_url})\n\n` +
-                `${issueContent}\n`;
-            // Get the default branch
-            const { data: repoData } = yield octokit.rest.repos.get({
+            await octokit.rest.repos.getContent({
                 owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo
+                repo: github_1.context.repo.repo,
+                path: targetDirectory,
+                ref: defaultBranch
             });
-            const defaultBranch = repoData.default_branch;
-            try {
-                // Check if file already exists
-                const { data: fileData } = yield octokit.rest.repos.getContent({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    path: filepath,
-                    ref: defaultBranch
-                });
-                // Update existing file
-                yield octokit.rest.repos.createOrUpdateFileContents({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    path: filepath,
-                    message: `Update tech radar entry from issue #${issue.number}`,
-                    content: Buffer.from(formattedContent).toString('base64'),
-                    branch: defaultBranch,
-                    sha: fileData.sha
-                });
-            }
-            catch (e) {
-                // File doesn't exist, create it
-                yield octokit.rest.repos.createOrUpdateFileContents({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    path: filepath,
-                    message: `Add tech radar entry from issue #${issue.number}`,
-                    content: Buffer.from(formattedContent).toString('base64'),
-                    branch: defaultBranch
-                });
-            }
-            console.log(`Successfully created tech radar entry at ${filepath}`);
         }
         catch (error) {
-            console.error(error);
-            (0, core_1.setFailed)((_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : 'Unknown error');
+            // Directory doesn't exist
+            dirExists = false;
         }
-    });
+        // Create the directory if it doesn't exist
+        if (!dirExists) {
+            console.log(`Creating directory: ${targetDirectory}`);
+            // We need to create a file to create a directory in GitHub
+            await octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: path.join(targetDirectory, '.gitkeep'),
+                message: `Create ${dateStr} directory for tech radar entries`,
+                content: Buffer.from('').toString('base64'),
+                branch: defaultBranch
+            });
+        }
+        try {
+            // Check if file already exists
+            const { data: fileData } = await octokit.rest.repos.getContent({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: filepath,
+                ref: defaultBranch
+            });
+            // File exists - but we'll just replace it with the new content
+            await octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: filepath,
+                message: `Update tech radar entry for ${formData.department} from issue #${issue.number}`,
+                content: Buffer.from(formattedContent).toString('base64'),
+                branch: defaultBranch,
+                sha: fileData.sha
+            });
+            console.log(`Successfully updated tech radar entry at ${filepath}`);
+        }
+        catch (e) {
+            // File doesn't exist, create it
+            await octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: filepath,
+                message: `Add tech radar entry from issue #${issue.number}`,
+                content: Buffer.from(formattedContent).toString('base64'),
+                branch: defaultBranch
+            });
+            console.log(`Successfully created new tech radar entry at ${filepath}`);
+        }
+    }
+    catch (error) {
+        console.error(error);
+        (0, core_1.setFailed)((_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : 'Unknown error');
+    }
 }
 run();
 
