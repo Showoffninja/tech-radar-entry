@@ -26,15 +26,25 @@ body:
       label: Department
       description: Which department is this assessment for?
       options:
-        - Engineering
-        - Data Science
-        - DevOps
-        - QA
-        - Product
-        - Design
-        - General
+        - Platform Engineering
+        - AI/ML
+        - Data Management
+        - GDAI R&ED
+        - GDAI Dev
+        - GDAI PSQ
+        - GDAI Commercial
+        - GDAI Staffs
     validations:
       required: true
+
+  - type: input
+    id: champion
+    attributes:
+      label: Champion
+      description: Who is responsible for championing this technology (GitHub username)
+      placeholder: e.g., username
+    validations:
+      required: false
 
   - type: dropdown
     id: ring
@@ -42,10 +52,10 @@ body:
       label: Ring
       description: The level of adoption you recommend for this technology
       options:
-        - adopt (Use this technology)
-        - trial (Try this technology in a project that can accept risk)
-        - assess (Explore and learn more about it)
-        - hold (Proceed with caution or avoid for now)
+        - adopt
+        - trial
+        - assess
+        - hold
     validations:
       required: true
 
@@ -55,10 +65,10 @@ body:
       label: Quadrant
       description: Which category does this technology best fit into?
       options:
-        - techniques (Methods, processes, and ways of working)
-        - tools (Software and technologies that support development)
-        - platforms-and-operations (Infrastructure, operational technologies)
-        - languages-and-frameworks (Programming languages and frameworks)
+        - methods-and-patterns
+        - tools
+        - platforms-and-operations
+        - languages-and-frameworks
     validations:
       required: true
 

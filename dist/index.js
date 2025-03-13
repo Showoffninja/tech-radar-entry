@@ -66,6 +66,9 @@ function extractFormData(body) {
             case "Department":
                 data.department = value;
                 break;
+            case "Champion":
+                data.champion = value;
+                break;
             case "Tags":
                 data.tags = value;
                 break;
@@ -152,7 +155,7 @@ title: ${title}
 quadrant: ${formData.quadrant}
 ring: ${formData.ring || 'assess'}
 ${tagsFormatted ? `tags: ${tagsFormatted}` : ''}
-champion: [@${issue.user.login}](${issue.user.html_url})
+champion: ${formData.champion || issue.user.login}
 department: ${formData.department}
 date: ${dateStr}
 ---
