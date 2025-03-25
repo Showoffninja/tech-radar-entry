@@ -1,6 +1,6 @@
 name: Technology Radar Entry
 description: Submit a new technology for consideration in the Tech Radar
-title: "[Tech Radar]: "
+title: "[Tech Radar]: Auto generated - do not modiy"
 labels: ["tech-radar"]
 assignees: []
 
@@ -21,7 +21,7 @@ body:
       required: true
 
   - type: dropdown
-    id: department
+    id: domain
     attributes:
       label: Department
       description: Which department is this assessment for?
@@ -29,11 +29,11 @@ body:
         - Platform Engineering
         - AI/ML
         - Data Management
-        - GDAI R&ED
-        - GDAI Dev
-        - GDAI PSQ
-        - GDAI Commercial
-        - GDAI Staffs
+        - GD&AI R&ED
+        - GD&AI Dev
+        - GD&AI PSQ
+        - GD&AI Commercial
+        - GD&AI Staffs
     validations:
       required: true
 
