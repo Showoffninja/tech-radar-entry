@@ -91,7 +91,7 @@ async function run() {
       return;
     }
     
-    if (!formData.department || formData.department.toLowerCase() === "no response") {
+    if (!formData.domain || formData.department.toLowerCase() === "no response") {
       setFailed("Missing required field: Department");
       return;
     }
@@ -107,7 +107,12 @@ async function run() {
         tagsFormatted = `[${tagArray.map(tag => `"${tag}"`).join(', ')}]`;
       }
     }
-    
+
+    // Extract domain as a separate field
+    const domainFormatted = formData.department ? 
+      `["${formData.department}"]` : 
+      '[]';
+
     // Generate date-based directory structure (YYYY-MM-DD)
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
@@ -136,9 +141,9 @@ async function run() {
 title: ${title}
 quadrant: ${formData.quadrant}
 ring: ${formData.ring || 'assess'}
-${tagsFormatted ? `tags: ${tagsFormatted}` : ''}
+tags: ${tagsFormatted || '[]'}
+domain: ${domainFormatted}
 champion: ${formData.champion || issue.user.login}
-department: ${formData.department}
 date: ${dateStr}
 ---
 
