@@ -91,7 +91,7 @@ async function run() {
       return;
     }
     
-    if (!formData.domain || formData.department.toLowerCase() === "no response") {
+    if (!formData.department || formData.department.toLowerCase() === "no response") {
       setFailed("Missing required field: Department");
       return;
     }

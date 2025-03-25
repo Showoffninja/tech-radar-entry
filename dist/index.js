@@ -117,7 +117,7 @@ async function run() {
             (0, core_1.setFailed)("Missing required field: Quadrant");
             return;
         }
-        if (!formData.domain || formData.department.toLowerCase() === "no response") {
+        if (!formData.department || formData.department.toLowerCase() === "no response") {
             (0, core_1.setFailed)("Missing required field: Department");
             return;
         }
