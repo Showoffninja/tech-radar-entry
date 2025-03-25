@@ -32,6 +32,9 @@ function extractFormData(body: string): Record<string, string> {
       case "Champion":
         data.champion = value;
         break;
+      case "Products":
+        data.products = value;
+        break;
       case "Tags":
         data.tags = value;
         break;
@@ -108,7 +111,19 @@ async function run() {
       }
     }
 
-    // Extract domain as a separate field
+    // Parse products into array format for the frontmatter
+    let productsFormatted = '';
+    if (formData.products && formData.products.trim() !== '') {
+      const productArray = formData.products.split(',')
+        .map(product => product.trim())
+        .filter(product => product.length > 0); // Filter out empty products
+      
+      if (productArray.length > 0) {
+        productsFormatted = `[${productArray.map(product => `"${product}"`).join(', ')}]`;
+      }
+    }
+
+    // Extract domains as a separate field
     const domainFormatted = formData.department ? 
       `["${formData.department}"]` : 
       '[]';
@@ -142,7 +157,8 @@ title: ${title}
 quadrant: ${formData.quadrant}
 ring: ${formData.ring || 'assess'}
 tags: ${tagsFormatted || '[]'}
-domain: ${domainFormatted}
+domains: ${domainFormatted}
+products: ${productsFormatted || '[]'}
 champion: ${formData.champion || issue.user.login}
 date: ${dateStr}
 ---
