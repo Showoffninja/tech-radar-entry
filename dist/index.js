@@ -126,7 +126,7 @@ async function run() {
         }
         // Parse tags into array format for the frontmatter
         let tagsFormatted = '';
-        if (formData.tags && formData.tags.trim() !== '') {
+        if (formData.tags && formData.tags.trim() !== '' && formData.tags !== '_No response_') {
             const tagArray = formData.tags.split(',')
                 .map(tag => tag.trim())
                 .filter(tag => tag.length > 0); // Filter out empty tags
@@ -136,7 +136,7 @@ async function run() {
         }
         // Parse products into array format for the frontmatter
         let productsFormatted = '';
-        if (formData.products && formData.products.trim() !== '') {
+        if (formData.products && formData.products.trim() !== '' && formData.products !== '_No response_') {
             const productArray = formData.products.split(',')
                 .map(product => product.trim())
                 .filter(product => product.length > 0); // Filter out empty products
@@ -145,9 +145,10 @@ async function run() {
             }
         }
         // Extract domains as a separate field
-        const domainFormatted = formData.department ?
-            `["${formData.department}"]` :
-            '[]';
+        let domainFormatted = '[]';
+        if (formData.department && formData.department !== '_No response_') {
+            domainFormatted = `["${formData.department}"]`;
+        }
         // Generate date-based directory structure (YYYY-MM-DD)
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
@@ -171,10 +172,10 @@ async function run() {
 title: ${title}
 quadrant: ${formData.quadrant}
 ring: ${formData.ring || 'assess'}
-tags: ${tagsFormatted || '[]'}
-domains: ${domainFormatted}
-products: ${productsFormatted || '[]'}
-champion: ${formData.champion || issue.user.login}
+${tagsFormatted ? `tags: ${tagsFormatted}` : ''}
+${domainFormatted !== '[]' ? `domains: ${domainFormatted}` : ''}
+${productsFormatted ? `products: ${productsFormatted}` : ''}
+${formData.champion && formData.champion !== '_No response_' ? `champion: ${formData.champion}` : `champion: ${issue.user.login}`}
 date: ${dateStr}
 ---
 
